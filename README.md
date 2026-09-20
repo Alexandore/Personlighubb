@@ -1,0 +1,2 @@
+# Personlighubb
+schema och anteckningar
