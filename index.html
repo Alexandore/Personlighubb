@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="sv" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Min Personliga Schema- och Målhubb</title>
+    <!-- Tailwind CSS for modern responsive design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide icons for clean UI elements -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 h-full flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <div id="loginBox">
+    <h2>Logga in</h2>
+
+    <input
+        type="email"
+        id="loginEmail"
+        placeholder="E-post"
+    >
+
+    <input
+        type="password"
+        id="loginPassword"
+        placeholder="Lösenord"
+    >
+
+    <button onclick="loginToSupabase()">
+        Logga in
+    </button>
+
+    <p id="loginMessage"></p>
+</div>
+
+    <div id="app-shell" class="hidden contents">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <hgroup class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-md flex items-center justify-center">
+                    <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900 leading-tight">Mina Mål & Schema</h1>
+                    <p class="text-xs text-slate-500" id="current-date-display">Laddar datum...</p>
+                </div>
+            </hgroup>
+            <nav aria-label="Arkivåtgärder" class="flex items-center space-x-2">
+                <span id="cloud-sync-status" class="hidden sm:inline text-xs text-slate-500" aria-live="polite">Inte inloggad</span>
+                <span id="signed-in-email" class="hidden lg:inline text-xs text-slate-400"></span>
+                <button onclick="logoutFromSupabase()" title="Logga ut" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1.5 text-sm font-medium"><i data-lucide="log-out" class="w-4 h-4"></i><span class="hidden sm:inline">Logga ut</span></button>
+                <button onclick="exportData()" title="Exportera data" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1.5 text-sm font-medium">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Exportera</span>
+                </button>
+                <label title="Importera data" class="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-sm font-medium">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Importera</span>
+                    <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(event)">
+                </label>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+        
+        <aside class="lg:col-span-3 flex flex-col space-y-2" aria-label="Sidonavigering">
+            <nav class="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                <button onclick="switchTab('schema')" id="nav-schema" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all bg-indigo-50 text-indigo-700">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                    <span>Schema & Dag</span>
+                </button>
+                <button onclick="switchTab('dagarkiv')" id="nav-dagarkiv" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="archive" class="w-5 h-5"></i>
+                    <span>Dagarkiv & Historik</span>
+                </button>
+                <button onclick="switchTab('mal')" id="nav-mal" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="target" class="w-5 h-5"></i>
+                    <span>Mål (Vecka - År)</span>
+                </button>
+                <button onclick="switchTab('uppgifter')" id="nav-uppgifter" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="check-square" class="w-5 h-5"></i>
+                    <span>Uppgifter</span>
+                </button>
+                <button onclick="switchTab('anteckningar')" id="nav-anteckningar" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    <span>Anteckningar</span>
+                </button>
+                <button onclick="switchTab('bocker')" id="nav-bocker" class="tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    <span>Bokhylla & Läslogg</span>
+                </button>
+            </nav>
+
+            <aside aria-label="Snabba statistikmål" class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-5 rounded-2xl shadow-md hidden lg:block space-y-3">
+                <header class="flex items-center justify-between">
+                    <p class="text-xs uppercase tracking-wider text-indigo-300 font-semibold">Dagens Mål Klarade</p>
+                    <i data-lucide="award" class="w-5 h-5 text-indigo-400"></i>
+                </header>
+                <div class="flex items-baseline space-x-2">
+                    <output class="text-3xl font-bold" id="sidebar-completed-count">0</output>
+                    <p class="text-slate-400 text-sm inline" id="sidebar-total-count">/ 0 st</p>
+                </div>
+                <meter id="sidebar-progress-bar" class="w-full bg-slate-800 rounded-full h-2 overflow-hidden block [&::-webkit-meter-bar]:bg-slate-800 [&::-webkit-meter-optimum-value]:bg-indigo-500" value="0" min="0" max="100" style="background: #1e293b; border-radius: 9999px; height: 8px;"></meter>
+
+                <!-- Global Completed Goals Collection -->
+                <div class="pt-3 border-t border-slate-700/80 mt-3 space-y-2">
+                    <header class="flex items-center justify-between">
+                        <p class="text-xs uppercase tracking-wider text-emerald-300 font-semibold flex items-center gap-1">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Avklarade Mål (Alla)
+                        </p>
+                        <output id="sidebar-global-completed-badge" class="text-[10px] bg-emerald-900/80 text-emerald-300 px-2 py-0.5 rounded-full font-semibold">0 st</output>
+                    </header>
+                    <div id="sidebar-global-completed-list" class="space-y-1.5 max-h-[140px] overflow-y-auto custom-scrollbar pr-1">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-700/80 mt-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs uppercase tracking-wider text-indigo-300 font-semibold">Dagens Anteckningar</p>
+                        <button onclick="openDayNoteModal()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded-lg transition-colors flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3 h-3"></i> Ny
+                        </button>
+                    </div>
+                    <div id="sidebar-day-notes-preview" class="space-y-1.5 max-h-[160px] overflow-y-auto custom-scrollbar pr-1">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </aside>
+        </aside>
+
+        <section class="lg:col-span-9 flex flex-col overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-xs" aria-label="Huvudinnehåll">
+            
+            <!-- TAB 1: SCHEMA & DAG -->
+            <article id="tab-content-schema" class="tab-content flex-1 flex flex-col overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <hgroup>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="calendar-days" class="w-6 h-6 text-indigo-600"></i>
+                            Schema & Dagsmål
+                        </h2>
+                        <p class="text-sm text-slate-500">Planera din dag och bocka av dina dagsmål.</p>
+                    </hgroup>
+                    <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+                        <input type="date" id="selected-date-input" onchange="loadDayData()" class="bg-white border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="setTodayDate()" class="px-3 py-1.5 text-xs font-semibold bg-white text-slate-700 hover:bg-slate-200 rounded-lg shadow-2xs transition-colors">Idag</button>
+                    </div>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Dagsmål Box -->
+                    <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 flex flex-col space-y-4" aria-label="Dagsmål">
+                        <header class="flex items-center justify-between">
+                            <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-base">
+                                <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600"></i>
+                                Dagsmål
+                            </h3>
+                            <p id="daily-goals-counter" class="text-xs bg-indigo-100 text-indigo-700 font-medium px-2.5 py-1 rounded-full m-0">0/0 klara</p>
+                        </header>
+                        <form onsubmit="addDailyGoal(event)" class="flex gap-2">
+                            <input type="text" id="new-daily-goal" placeholder="Lägg till dagsmål..." class="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-1 shadow-xs">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Lägg till
+                            </button>
+                        </form>
+                        <div id="daily-goals-list" class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1" role="list">
+                            <!-- Populated via JS -->
+                        </div>
+                    </section>
+
+                    <!-- Schema / Timplan Box -->
+                    <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 flex flex-col space-y-4" aria-label="Dagsschema">
+                        <header class="flex items-center justify-between">
+                            <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-base">
+                                <i data-lucide="clock" class="w-5 h-5 text-indigo-600"></i>
+                                Dagsschema (Tider)
+                            </h3>
+                        </header>
+                        <form onsubmit="addScheduleItem(event)" class="flex gap-2">
+                            <input type="time" id="new-schedule-time" class="bg-white border border-slate-200 rounded-xl px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                            <input type="text" id="new-schedule-text" placeholder="Aktivitet (t.ex. Träning, Möte)..." class="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-1 shadow-xs">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </form>
+                        <div id="schedule-items-list" class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1" role="list">
+                            <!-- Populated via JS -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Dagens Egna Anteckningsrutor med Sökfunktion -->
+                <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 flex flex-col space-y-4" aria-label="Dagens anteckningar">
+                    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-base">
+                            <i data-lucide="edit-3" class="w-5 h-5 text-amber-600"></i>
+                            Anteckningar för vald dag (<span id="active-day-label">Idag</span>)
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex-1 sm:w-64">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                                    <i data-lucide="search" class="w-4 h-4"></i>
+                                </span>
+                                <input type="text" id="day-notes-search" oninput="renderDayNotes()" placeholder="Sök anteckning..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <button onclick="openDayNoteModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded-xl text-xs transition-colors flex items-center gap-1 shrink-0">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Ny anteckning
+                            </button>
+                        </div>
+                    </header>
+                    
+                    <div id="day-notes-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1">
+                        <!-- Populated via JS -->
+                    </div>
+                </section>
+            </article>
+
+            <!-- TAB 1.5: DAGARKIV & HISTORIK -->
+            <article id="tab-content-dagarkiv" class="tab-content flex-1 flex flex-col overflow-y-auto p-6 space-y-6 custom-scrollbar hidden">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <hgroup>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="archive" class="w-6 h-6 text-indigo-600"></i>
+                            Dagarkiv & Historik per Datum
+                        </h2>
+                        <p class="text-sm text-slate-500">Här samlas alla dagar där du har skapat dagsmål, scheman eller anteckningar.</p>
+                    </hgroup>
+                    <div class="relative w-full sm:w-72">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text" id="archive-search" oninput="renderDayArchive()" placeholder="Sök datum eller innehåll..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </header>
+
+                <div id="day-archive-container" class="space-y-4">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </article>
+
+            <!-- TAB 2: MÅL (VECKA - ÅR) -->
+            <article id="tab-content-mal" class="tab-content flex-1 flex flex-col overflow-y-auto p-6 space-y-6 custom-scrollbar hidden">
+                <header class="border-b border-slate-100 pb-4">
+                    <hgroup>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="target" class="w-6 h-6 text-indigo-600"></i>
+                            Målhanterare (Vecka, Månad & År)
+                        </h2>
+                        <p class="text-sm text-slate-500">Sätt upp och följ dina långsiktiga visioner.</p>
+                    </hgroup>
+                </header>
+
+                <!-- Veckomål -->
+                <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4" aria-label="Veckomål">
+                    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-base">
+                            <i data-lucide="calendar-range" class="w-5 h-5 text-blue-600"></i>
+                            Veckomål
+                        </h3>
+                        <div class="flex items-center space-x-2">
+                            <select id="select-week" onchange="renderGoals()" class="bg-white border border-slate-200 rounded-lg px-3 py-1 text-xs font-medium text-slate-700">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                    </header>
+                    <form onsubmit="addGoal(event, 'week')" class="flex gap-2">
+                        <input type="text" id="new-week-goal" placeholder="Lägg till veckomål..." class="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-1 shadow-xs">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Lägg till
+                        </button>
+                    </form>
+                    <div id="week-goals-list" class="space-y-2.5" role="list"></div>
+                </section>
+
+                <!-- Månadsmål -->
+                <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4" aria-label="Månadsmål">
+                    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-base">
+                            <i data-lucide="calendar" class="w-5 h-5 text-indigo-600"></i>
+                            Månadsmål
+                        </h3>
+                        <select id="select-month" onchange="renderGoals()" class="bg-white border border-slate-200 rounded-lg px-3 py-1 text-xs font-medium text-slate-700">
+                            <option value="0">Januari</option><option value="1">Februari</option><option value="2">Mars</option><option value="3">April</option><option value="4">Maj</option><option value="5">Juni</option><option value="6">Juli</option><option value="7">Augusti</option><option value="8">September</option><option value="9">Oktober</option><option value="10">November</option><option value="11">December</option>
+                        </select>
+                    </header>
+                    <form onsubmit="addGoal(event, 'month')" class="flex gap-2">
+                        <input type="text" id="new-month-goal" placeholder="Lägg till månadsmål..." class="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-1 shadow-xs">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Lägg till
+                        </button>
+                    </form>
+                    <div id="month-goals-list" class="space-y-2.5" role="list"></div>
+                </section>
+
+                <!-- Årsmål -->
+                <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4" aria-label="Årsmål">
+                    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-base">
+                            <i data-lucide="flag" class="w-5 h-5 text-purple-600"></i>
+                            Årsmål
+                        </h3>
+                        <select id="select-year" onchange="renderGoals()" class="bg-white border border-slate-200 rounded-lg px-3 py-1 text-xs font-medium text-slate-700">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </header>
+                    <form onsubmit="addGoal(event, 'year')" class="flex gap-2">
+                        <input type="text" id="new-year-goal" placeholder="Lägg till årsmål..." class="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-1 shadow-xs">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Lägg till
+                        </button>
+                    </form>
+                    <div id="year-goals-list" class="space-y-2.5" role="list"></div>
+                </section>
+            </article>
+
+            <!-- TAB 3: UPPGIFTER -->
+            <article id="tab-content-uppgifter" class="tab-content flex-1 flex flex-col overflow-y-auto p-6 space-y-6 custom-scrollbar hidden">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <hgroup>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="check-square" class="w-6 h-6 text-indigo-600"></i>
+                            Uppgifter & Att-göra-lista
+                        </h2>
+                        <p class="text-sm text-slate-500">Hantera dina uppgifter, projekt och prioriteringar på ett och samma ställe.</p>
+                    </hgroup>
+                    <nav class="flex items-center space-x-2" aria-label="Uppgiftsfilter">
+                        <select id="filter-task-status" onchange="renderTasks()" class="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="all">Alla uppgifter</option>
+                            <option value="active">Ej klara</option>
+                            <option value="completed">Klara</option>
+                        </select>
+                    </nav>
+                </header>
+
+                <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4" aria-label="Skapa ny uppgift">
+                    <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-sm">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i>
+                        Skapa ny uppgift
+                    </h3>
+                    <form onsubmit="addTask(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                        <input type="text" id="new-task-text" placeholder="Vad behöver göras?..." class="sm:col-span-6 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                        <select id="new-task-priority" class="sm:col-span-3 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="normal">Normal prioritet</option>
+                            <option value="high">Hög prioritet ⚡</option>
+                            <option value="low">Låg prioritet</option>
+                        </select>
+                        <button type="submit" class="sm:col-span-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1 shadow-xs">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Lägg till uppgift
+                        </button>
+                    </form>
+                </section>
+
+                <section class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 flex flex-col space-y-4 flex-1" aria-label="Att-göra-lista">
+                    <header class="flex items-center justify-between">
+                        <h3 class="font-semibold text-slate-900 flex items-center gap-2 text-sm">
+                            <i data-lucide="list-todo" class="w-4 h-4 text-indigo-600"></i>
+                            Att-göra-lista
+                        </h3>
+                        <p id="task-counter-badge" class="text-xs bg-indigo-100 text-indigo-700 font-medium px-2.5 py-1 rounded-full m-0">0 st</p>
+                    </header>
+                    <div id="tasks-container-list" class="space-y-2.5" role="list">
+                        <!-- Populated via JS -->
+                    </div>
+                </section>
+            </article>
+
+            <!-- TAB 4: ANTECKNINGAR -->
+            <article id="tab-content-anteckningar" class="tab-content flex-1 flex flex-col overflow-y-auto p-6 space-y-6 custom-scrollbar hidden">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <hgroup>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-6 h-6 text-indigo-600"></i>
+                            Anteckningsblock & Idéer
+                        </h2>
+                        <p class="text-sm text-slate-500">Samla fria anteckningar, projektidéer eller att-göra-listor.</p>
+                    </hgroup>
+                    <button onclick="createNewNote()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-2 shadow-xs self-start sm:self-auto">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Ny anteckning
+                    </button>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-[400px]">
+                    <aside aria-label="Anteckningslista" class="md:col-span-1 bg-slate-50 border border-slate-200/80 rounded-2xl p-3 flex flex-col space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar" id="notes-sidebar-list">
+                        <!-- Populated via JS -->
+                    </aside>
+                    <section class="md:col-span-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-5 flex flex-col space-y-3" id="note-editor-container" aria-label="Anteckningsredigerare">
+                        <article id="no-note-selected" class="flex-1 flex flex-col items-center justify-center text-slate-400 py-20">
+                            <i data-lucide="book-open" class="w-12 h-12 mb-2 stroke-1"></i>
+                            <p class="text-sm text-center">Välj en anteckning till vänster eller skapa en ny.</p>
+                        </article>
+                        <article id="active-note-editor" class="hidden flex-1 flex flex-col space-y-3">
+                            <header class="flex items-center justify-between gap-2">
+                                <input type="text" id="active-note-title" oninput="updateActiveNote()" placeholder="Anteckningens titel (sätts automatiskt till datum)..." class="font-bold text-lg bg-transparent border-b border-slate-200 pb-1 flex-1 focus:outline-none focus:border-indigo-500 text-slate-900">
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="saveActiveNoteManual()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded-xl text-xs transition-colors flex items-center gap-1 shadow-xs" title="Lägg till / Spara">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Lägg till
+                                    </button>
+                                    <button onclick="deleteActiveNote()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Radera anteckning">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </header>
+                            <textarea id="active-note-body" oninput="updateActiveNote()" placeholder="Skriv dina anteckningar här..." rows="12" class="w-full flex-1 bg-white border border-slate-200 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                        </article>
+                    </section>
+                </div>
+            </article>
+
+            <!-- TAB 5: BOKHYLLA & LÄSLOGG -->
+            <article id="tab-content-bocker" class="tab-content flex-1 flex flex-col overflow-y-auto p-6 space-y-6 custom-scrollbar hidden">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <hgroup>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="book-open" class="w-6 h-6 text-indigo-600"></i>
+                            Bokhylla & Läslogg
+                        </h2>
+                        <p class="text-sm text-slate-500">Håll koll på böcker du vill läsa, läser just nu eller har läst, med egna sammanfattningar.</p>
+                    </hgroup>
+                    <button onclick="openBookModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition-colors flex items-center gap-2 shadow-xs self-start sm:self-auto">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Lägg till bok
+                    </button>
+                </header>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Visa:</span>
+                        <select id="filter-book-status" onchange="renderBooks()" class="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="all">Alla böcker</option>
+                            <option value="want">Att läsa</option>
+                            <option value="reading">Läser nu</option>
+                            <option value="read">Lästa</option>
+                        </select>
+                    </div>
+                    <div class="relative flex-1 sm:w-64">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text" id="book-search" oninput="renderBooks()" placeholder="Sök titel eller författare..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div id="books-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Populated via JS -->
+                </div>
+            </article>
+
+        </section>
+    </main>
+
+    <!-- MODAL FÖR NY/ÄNDRA BOK -->
+    <div id="book-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <header class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2" id="book-modal-title">
+                    <i data-lucide="book-plus" class="w-5 h-5 text-indigo-600"></i>
+                    Lägg till bok
+                </h3>
+                <button onclick="closeBookModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </header>
+            <form onsubmit="saveBook(event)" class="space-y-4">
+                <input type="hidden" id="edit-book-id">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Boktitel *</label>
+                        <input type="text" id="modal-book-title" placeholder="T.ex. Processen" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Författare</label>
+                        <input type="text" id="modal-book-author" placeholder="T.ex. Franz Kafka" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Status</label>
+                        <select id="modal-book-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="want">Att läsa</option>
+                            <option value="reading">Läser nu</option>
+                            <option value="read">Läst</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Betyg (1-10)</label>
+                        <select id="modal-book-rating" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="0">Inget betyg</option>
+                            <option value="1">1 av 10</option>
+                            <option value="2">2 av 10</option>
+                            <option value="3">3 av 10</option>
+                            <option value="4">4 av 10</option>
+                            <option value="5">5 av 10</option>
+                            <option value="6">6 av 10</option>
+                            <option value="7">7 av 10</option>
+                            <option value="8">8 av 10</option>
+                            <option value="9">9 av 10</option>
+                            <option value="10">10 av 10</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Egna anteckningar & sammanfattning (i egna meningar)</label>
+                    <textarea id="modal-book-notes" placeholder="Skriv din sammanfattning, vad du tyckte eller egna tankar om boken..." rows="6" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeBookModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Avbryt</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs transition-colors">Spara bok</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL FÖR DAGANTECKNING -->
+    <div id="day-note-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4">
+            <header class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i data-lucide="file-plus" class="w-5 h-5 text-indigo-600"></i>
+                    Skapa daganteckning
+                </h3>
+                <button onclick="closeDayNoteModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </header>
+            <form onsubmit="saveDayNote(event)" class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Titel / Rubrik</label>
+                    <input type="text" id="modal-note-title" placeholder="T.ex. Veckomöte eller Tankar..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Anteckningstext</label>
+                    <textarea id="modal-note-body" placeholder="Skriv din anteckning här..." rows="5" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y" required></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeDayNoteModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Avbryt</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs transition-colors">Spara anteckning</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification toast container -->
+    <aside aria-label="Meddelanden" id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></aside>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
